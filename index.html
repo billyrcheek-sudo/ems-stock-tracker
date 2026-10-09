@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#b3121b">
+<title>EMS Stock Tracker</title>
+<style>
+*{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f1f4f8;color:#1c2430;padding-bottom:120px;-webkit-text-size-adjust:100%}
+header{background:#b3121b;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:20;box-shadow:0 2px 6px rgba(0,0,0,0.15)}
+header h1{margin:0;font-size:20px;display:flex;align-items:center;justify-content:space-between}
+header small{opacity:.9;font-size:12px;display:block;margin-top:2px}
+.badge{padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#15803d;color:#fff}
+.stats{display:flex;gap:8px;padding:12px;overflow-x:auto}
+.stat{flex:1;min-width:95px;background:#fff;border-radius:10px;padding:10px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);cursor:pointer}
+.stat b{display:block;font-size:22px}.stat.warn b{color:#d97706}.stat.bad b{color:#b3121b}
+.bar{display:flex;gap:8px;padding:0 12px 10px;flex-wrap:wrap}
+input,select{padding:10px;border:1px solid #ccd;border-radius:8px;font-size:15px;background:#fff;color:#1c2430;-webkit-appearance:none;appearance:none}
+.bar input{flex:2;min-width:140px}.bar select{flex:1;min-width:120px}
+.tools{display:flex;gap:8px;padding:0 12px 12px;flex-wrap:wrap}
+.tools button{padding:9px 12px;border:1px solid #ccd;background:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.list{padding:0 12px}
+.card{display:flex;gap:12px;background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);align-items:center}
+.card img,.ph{width:68px;height:68px;border-radius:8px;object-fit:cover;background:#e5e9f0;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0}
+.info{flex:1;min-width:0;cursor:pointer}
+.info h3{margin:0 0 4px;font-size:16px;font-weight:700}
+.meta{font-size:12px;color:#556;margin-bottom:4px}
+.tag{display:inline-block;font-size:11px;padding:2px 6px;border-radius:6px;margin:2px 3px 0 0;background:#e8edf5;font-weight:600}
+.tag.low{background:#fde68a;color:#854d0e}.tag.out{background:#fecaca;color:#991b1b}.tag.exp{background:#fecaca;color:#991b1b}.tag.soon{background:#fed7aa;color:#9a3412}
+.qty{display:flex;flex-direction:column;align-items:center;gap:4px}
+.qty button{width:40px;height:36px;border:0;border-radius:8px;font-size:22px;background:#e5e9f0;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center}
+.qty button:active{background:#cbd5e1}
+.qty span{font-weight:800;font-size:18px}
+.fab{position:fixed;right:18px;bottom:22px;background:#b3121b;color:#fff;border:0;border-radius:30px;padding:16px 24px;font-size:16px;box-shadow:0 4px 14px rgba(0,0,0,0.35);cursor:pointer;font-weight:700;z-index:50}
+.fab:active{transform:scale(0.96)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:flex-end;justify-content:center;z-index:100}
+.modal.on{display:flex}
+.sheet{background:#fff;width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:20px 16px 36px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sheet label{display:block;font-size:13px;font-weight:700;margin:10px 0 4px;color:#334155}.sheet input,.sheet select{width:100%}
+.row{display:flex;gap:8px}.row>div{flex:1}
+.photo{border:2px dashed #b3121b;border-radius:12px;padding:14px;text-align:center;color:#b3121b;font-weight:700;cursor:pointer;background:#fff5f5}
+.photo img{max-width:100%;max-height:180px;border-radius:8px;display:block;margin:0 auto}
+.photo-actions{display:flex;gap:8px;margin-top:8px}
+.photo-btn{flex:1;padding:10px 8px;background:#f1f4f8;border:1px solid #ccd;border-radius:8px;font-size:13px;font-weight:700;color:#1c2430;cursor:pointer}
+.btns{display:flex;gap:8px;margin-top:18px}.btns button{flex:1;padding:14px;border:0;border-radius:8px;font-size:15px;cursor:pointer;font-weight:700}
+.save{background:#b3121b;color:#fff}.del{background:#fee2e2;color:#b3121b}.cancel{background:#e5e9f0;color:#334}
+.empty{text-align:center;color:#64748b;padding:48px 16px;font-size:15px}
+.tools button.move{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+.banner{margin:0 12px 12px;padding:12px;border-radius:10px;background:#dbeafe;color:#1e3a8a;font-size:14px;display:none}
+.banner b{display:block;margin-bottom:4px}.banner button{margin-top:8px;padding:9px 12px;border:0;border-radius:8px;background:#1d4ed8;color:#fff;font-weight:700;font-size:14px}
+.xbox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-top:12px}
+.xbox h3{margin:0 0 6px;font-size:15px}.xbox p{margin:0 0 8px;font-size:13px;color:#475569}
+.xbtn{display:block;width:100%;padding:12px;border:0;border-radius:8px;font-size:15px;font-weight:700;margin-top:8px;cursor:pointer;background:#1d4ed8;color:#fff}
+.xbtn.alt{background:#e5e9f0;color:#1c2430}
+.where{font-size:13px;font-weight:700;padding:8px 10px;border-radius:8px;background:#fef3c7;color:#854d0e}
+.sheet textarea{width:100%;min-height:90px;font-size:13px;padding:8px;border:1px solid #ccd;border-radius:8px;font-family:ui-monospace,Menlo,monospace}
+.radio{display:flex;gap:8px;margin-top:6px}.radio label{flex:1;margin:0;font-weight:600;font-size:13px;background:#fff;border:1px solid #ccd;border-radius:8px;padding:8px;display:flex;gap:6px;align-items:center}
+.radio input{width:18px;height:18px;margin:0;-webkit-appearance:radio;appearance:auto;accent-color:#1d4ed8}
+#xMsg{font-size:13px;margin-top:10px;font-weight:600}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>🚑 EMS Stock Tracker</span><span class="badge">Station Units</span></h1>
+  <small>Station 1 · Station 2 · 2521 · 2522 · 2540 · Drug Box</small>
+</header>
+
+<div class="stats">
+  <div class="stat" onclick="quick('all')"><b id="sTotal">7</b>Items</div>
+  <div class="stat warn" onclick="quick('low')"><b id="sLow">3</b>Low / Out</div>
+  <div class="stat bad" onclick="quick('exp')"><b id="sExp">2</b>Expiring ≤30d</div>
+</div>
+
+<div class="bar">
+  <input id="q" placeholder="🔍 Search items…" oninput="render()">
+  <select id="fLoc" onchange="render()"></select>
+  <select id="fCat" onchange="render()"></select>
+  <select id="fStat" onchange="render()">
+    <option value="all">All status</option>
+    <option value="low">Low / Out</option>
+    <option value="exp">Expiring / Expired</option>
+  </select>
+</div>
+
+<div class="banner" id="moveBanner">
+  <b>Moving your items from Safari?</b>
+  The Home Screen app keeps its own storage, separate from Safari. Save a backup in Safari, then restore it here.
+  <br><button type="button" onclick="openMove()">Restore backup</button>
+</div>
+<div class="tools">
+  <button type="button" onclick="exportCSV()">⬇ Export CSV (order list)</button>
+  <button type="button" class="move" onclick="openMove()">⇄ Back up / Move data</button>
+  <button type="button" onclick="resetSample()">↺ Reset sample items</button>
+</div>
+
+<div class="list" id="list"></div>
+<button type="button" class="fab" onclick="openForm()">+ Add Item</button>
+
+<div class="modal" id="modal" onclick="closeForm()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <h2 id="fTitle" style="margin:0 0 8px">Add Item</h2>
+    
+    <input type="file" id="camInput" accept="image/*" capture="environment" style="display:none" onchange="gotPhoto(this)">
+    <input type="file" id="libInput" accept="image/*" style="display:none" onchange="gotPhoto(this)">
+    
+    <div class="photo" id="photoBox" onclick="document.getElementById('libInput').click()">📷 Tap to select or take photo</div>
+    <div class="photo-actions">
+      <button type="button" class="photo-btn" onclick="document.getElementById('camInput').click()">📸 Take Photo</button>
+      <button type="button" class="photo-btn" onclick="document.getElementById('libInput').click()">🖼 Choose from Library</button>
+    </div>
+    
+    <label>Item name</label><input id="iName" placeholder="e.g. 4x4 gauze pads">
+    <div class="row"><div><label>Category</label><select id="iCat"></select></div><div><label>Location</label><select id="iLoc"></select></div></div>
+    <div class="row"><div><label>Quantity</label><input id="iQty" type="number" min="0" value="1"></div><div><label>Par level (min)</label><input id="iPar" type="number" min="0" value="5"></div></div>
+    <div class="row"><div><label>Expiration</label><input id="iExp" type="date"></div><div><label>Lot / notes</label><input id="iNote" placeholder="Lot #, shelf, etc."></div></div>
+    
+    <div class="btns">
+      <button type="button" class="cancel" onclick="closeForm()">Cancel</button>
+      <button type="button" class="del" id="delBtn" onclick="del()">Delete</button>
+      <button type="button" class="save" id="saveBtn" onclick="save()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="moveModal" onclick="closeMove()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <h2 style="margin:0 0 8px">Back Up / Move Data</h2>
+    <div class="where" id="xWhere"></div>
+    <div class="xbox">
+      <h3>1. Save backup (do this in Safari)</h3>
+      <p id="xInfo"></p>
+      <button type="button" class="xbtn" onclick="exportBackup()">Save backup file</button>
+      <button type="button" class="xbtn alt" onclick="copyBackup()">Copy backup to clipboard</button>
+    </div>
+    <div class="xbox">
+      <h3>2. Restore backup (do this in the Home Screen app)</h3>
+      <p>Pick the .json file you saved to Files, or paste copied backup text.</p>
+      <div class="radio">
+        <label><input type="radio" name="xMode" value="replace" checked> Replace all</label>
+        <label><input type="radio" name="xMode" value="merge"> Merge</label>
+      </div>
+      <input type="file" id="xFile" style="display:none" onchange="importFile(this)">
+      <button type="button" class="xbtn" onclick="document.getElementById('xFile').click()">Choose backup file</button>
+      <textarea id="xPaste" placeholder="…or paste backup text here"></textarea>
+      <button type="button" class="xbtn alt" onclick="importPaste()">Restore pasted text</button>
+    </div>
+    <div id="xMsg"></div>
+    <div class="btns"><button type="button" class="cancel" onclick="closeMove()">Close</button></div>
+  </div>
+</div>
+<script>
+var CATS = ["Airway", "Medications", "IV / Fluids", "Trauma / Bleeding", "Cardiac", "PPE", "Splinting", "Cleaning", "Linens", "Other"];
+var LOCS = ["Station 1", "Station 2", "Unit 2521", "Unit 2522", "Unit 2540", "Drug Box"];
+
+function d(n){ var x=new Date(); x.setDate(x.getDate()+n); return x.toISOString().slice(0,10); }
+
+function getInitialSample(){
+  return [
+    {id:"1", name:"4x4 Gauze Pads", cat:"Trauma / Bleeding", loc:"Station 1", qty:40, par:50, exp:"", note:"Shelf B2"},
+    {id:"2", name:"Tourniquet (CAT)", cat:"Trauma / Bleeding", loc:"Unit 2522", qty:2, par:2, exp:"", note:""},
+    {id:"3", name:"Normal Saline 1000mL", cat:"IV / Fluids", loc:"Station 2", qty:12, par:20, exp:d(20), note:"Lot 4471"},
+    {id:"4", name:"Nitrile Gloves (L)", cat:"PPE", loc:"Unit 2540", qty:0, par:10, exp:"", note:"Boxes"},
+    {id:"5", name:"Epinephrine 1mg/10mL", cat:"Medications", loc:"Drug Box", qty:4, par:4, exp:d(12), note:""},
+    {id:"6", name:"OPA Kit", cat:"Airway", loc:"Unit 2521", qty:1, par:1, exp:"", note:""},
+    {id:"7", name:"Defib Pads (Adult)", cat:"Cardiac", loc:"Unit 2522", qty:2, par:2, exp:d(200), note:""}
+  ];
+}
+
+var items = [];
+try {
+  var saved = localStorage.getItem("ems_items_v8");
+  items = saved ? JSON.parse(saved) : getInitialSample();
+} catch(e) {
+  items = getInitialSample();
+}
+
+var editId = null;
+var photo = null;
+
+function saveStorage(){
+  try { localStorage.setItem("ems_items_v8", JSON.stringify(items)); }
+  catch(e){ alert("Phone storage is full. This change was NOT saved. Remove some item photos, then try again."); }
+}
+
+function days(e){ return e ? Math.ceil((new Date(e) - new Date()) / 864e5) : null; }
+
+function status(it){
+  var t = [];
+  if (it.qty <= 0) t.push(['out', 'OUT']);
+  else if (it.qty < it.par) t.push(['low', 'LOW']);
+  var dd = days(it.exp);
+  if (dd !== null) {
+    if (dd < 0) t.push(['exp', 'EXPIRED']);
+    else if (dd <= 30) t.push(['soon', 'Exp in ' + dd + 'd']);
+  }
+  return t;
+}
+
+function populateDropdowns(){
+  function makeOpts(arr, all){
+    var out = all ? '<option value="all">' + all + '</option>' : '';
+    for(var i=0; i<arr.length; i++){ out += '<option value="' + arr[i] + '">' + arr[i] + '</option>'; }
+    return out;
+  }
+  document.getElementById('fLoc').innerHTML = makeOpts(LOCS, 'All locations');
+  document.getElementById('fCat').innerHTML = makeOpts(CATS, 'All categories');
+  document.getElementById('iCat').innerHTML = makeOpts(CATS, '');
+  document.getElementById('iLoc').innerHTML = makeOpts(LOCS, '');
+}
+
+function render(){
+  var q = (document.getElementById('q').value || '').toLowerCase();
+  var L = document.getElementById('fLoc').value || 'all';
+  var C = document.getElementById('fCat').value || 'all';
+  var S = document.getElementById('fStat').value || 'all';
+
+  document.getElementById('sTotal').textContent = items.length;
+  document.getElementById('sLow').textContent = items.filter(function(i){ return i.qty < i.par; }).length;
+  document.getElementById('sExp').textContent = items.filter(function(i){ var x = days(i.exp); return x !== null && x <= 30; }).length;
+
+  var filtered = items.filter(function(i){
+    var matchesQ = !q || ((i.name + ' ' + (i.note||'')).toLowerCase().indexOf(q) !== -1);
+    var matchesL = (L === 'all') || (i.loc === L);
+    var matchesC = (C === 'all') || (i.cat === C);
+    var matchesS = (S === 'all') || (S === 'low' && i.qty < i.par) || (S === 'exp' && days(i.exp) !== null && days(i.exp) <= 30);
+    return matchesQ && matchesL && matchesC && matchesS;
+  });
+
+  if (filtered.length === 0) {
+    document.getElementById('list').innerHTML = '<div class="empty">No items found.<br>Tap <b>+ Add Item</b> below to add stock.</div>';
+    return;
+  }
+
+  var html = '';
+  for(var i=0; i<filtered.length; i++){
+    var it = filtered[i];
+    var statTags = status(it).map(function(st){ return '<span class="tag ' + st[0] + '">' + st[1] + '</span>'; }).join('');
+    var imgHtml = it.photo ? '<img src="' + it.photo + '">' : '<div class="ph">📦</div>';
+    var expText = it.exp ? ' · exp ' + it.exp : '';
+    
+    html += '<div class="card">' +
+      '<div onclick="openForm(\'' + it.id + '\')">' + imgHtml + '</div>' +
+      '<div class="info" onclick="openForm(\'' + it.id + '\')">' +
+        '<h3>' + it.name + '</h3>' +
+        '<div class="meta">' + (it.loc || 'Station 1') + ' · ' + (it.cat || 'Other') + ' · par ' + (it.par || 0) + expText + '</div>' +
+        '<span class="tag">' + (it.note || '—') + '</span>' + statTags +
+      '</div>' +
+      '<div class="qty">' +
+        '<button type="button" onclick="adj(\'' + it.id + '\', 1)">+</button>' +
+        '<span>' + (it.qty || 0) + '</span>' +
+        '<button type="button" onclick="adj(\'' + it.id + '\', -1)">−</button>' +
+      '</div>' +
+    '</div>';
+  }
+  document.getElementById('list').innerHTML = html;
+}
+
+function adj(id, n){
+  for(var i=0; i<items.length; i++){
+    if(String(items[i].id) === String(id)){
+      items[i].qty = Math.max(0, (parseInt(items[i].qty) || 0) + n);
+      break;
+    }
+  }
+  saveStorage();
+  render();
+}
+
+function quick(s){
+  document.getElementById('fStat').value = s;
+  render();
+}
+
+function openForm(id){
+  editId = id || null;
+  var target = null;
+  if(id){
+    for(var i=0; i<items.length; i++){
+      if(String(items[i].id) === String(id)){ target = items[i]; break; }
+    }
+  }
+  var it = target || {name:'', cat:CATS[0], loc:LOCS[0], qty:1, par:5, exp:'', note:'', photo:null};
+  
+  document.getElementById('fTitle').textContent = id ? 'Edit Item' : 'Add Item';
+  document.getElementById('iName').value = it.name || '';
+  document.getElementById('iCat').value = it.cat || CATS[0];
+  document.getElementById('iLoc').value = it.loc || LOCS[0];
+  document.getElementById('iQty').value = it.qty !== undefined ? it.qty : 1;
+  document.getElementById('iPar').value = it.par !== undefined ? it.par : 5;
+  document.getElementById('iExp').value = it.exp || '';
+  document.getElementById('iNote').value = it.note || '';
+  photo = it.photo || null;
+  showPhoto();
+  document.getElementById('delBtn').style.display = id ? 'block' : 'none';
+  document.getElementById('modal').classList.add('on');
+}
+
+function closeForm(){
+  document.getElementById('modal').classList.remove('on');
+  document.getElementById('camInput').value = '';
+  document.getElementById('libInput').value = '';
+}
+
+function showPhoto(){
+  var box = document.getElementById('photoBox');
+  if(photo){
+    box.innerHTML = '<img src="' + photo + '"><div style="font-size:13px;margin-top:4px">Tap to change</div>';
+  } else {
+    box.innerHTML = '📷 Tap to select or take photo';
+  }
+}
+
+function gotPhoto(inp){
+  var file = inp.files && inp.files[0];
+  if(!file) return;
+  var r = new FileReader();
+  r.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var c = document.createElement('canvas');
+      var maxDim = 450;
+      var w = img.width, h = img.height;
+      if(w > h && w > maxDim){ h = Math.round((h * maxDim)/w); w = maxDim; }
+      else if(h > maxDim){ w = Math.round((w * maxDim)/h); h = maxDim; }
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      photo = c.toDataURL('image/jpeg', 0.65);
+      showPhoto();
+      if(!document.getElementById('iName').value){
+        document.getElementById('iName').placeholder = 'Type item name';
+        document.getElementById('iName').focus();
+      }
+    };
+    img.src = e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+
+function save(){
+  var name = (document.getElementById('iName').value || '').trim();
+  if(!name){ alert('Please enter an item name'); return; }
+  
+  var o = {
+    name: name,
+    cat: document.getElementById('iCat').value,
+    loc: document.getElementById('iLoc').value,
+    qty: parseInt(document.getElementById('iQty').value) || 0,
+    par: parseInt(document.getElementById('iPar').value) || 0,
+    exp: document.getElementById('iExp').value || '',
+    note: document.getElementById('iNote').value || '',
+    photo: photo
+  };
+
+  if(editId){
+    for(var i=0; i<items.length; i++){
+      if(String(items[i].id) === String(editId)){
+        items[i] = Object.assign({}, items[i], o);
+        break;
+      }
+    }
+  } else {
+    o.id = 'item_' + Date.now();
+    items.unshift(o);
+  }
+  
+  saveStorage();
+  closeForm();
+  render();
+}
+
+function del(){
+  if(!confirm('Delete this item?')) return;
+  items = items.filter(function(x){ return String(x.id) !== String(editId); });
+  saveStorage();
+  closeForm();
+  render();
+}
+
+function resetSample(){
+  if(confirm('Reset all items back to station sample list?')){
+    items = getInitialSample();
+    saveStorage();
+    render();
+  }
+}
+
+function cleanCell(val){
+  if(val === null || val === undefined) return '""';
+  var str = String(val).replace(/[\r\n\t]+/g, ' ').replace(/"/g, '""').trim();
+  return '"' + str + '"';
+}
+
+function exportCSV(){
+  var rows = [["Item", "Category", "Location", "Qty", "Par", "Need", "Expiration", "Notes"]];
+  for(var i=0; i<items.length; i++){
+    var it = items[i];
+    rows.push([
+      it.name,
+      it.cat,
+      it.loc,
+      it.qty,
+      it.par,
+      Math.max(0, (parseInt(it.par)||0) - (parseInt(it.qty)||0)),
+      it.exp || '',
+      it.note || ''
+    ]);
+  }
+  
+  var lines = [];
+  for(var r=0; r<rows.length; r++){
+    var formattedRow = [];
+    for(var c=0; c<rows[r].length; c++){
+      formattedRow.push(cleanCell(rows[r][c]));
+    }
+    lines.push(formattedRow.join(','));
+  }
+  
+  var csvData = '\uFEFF' + lines.join('\r\n');
+  var blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ems-inventory.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ---------- Backup / move data between Safari and the Home Screen app ----------
+var STORE_KEY = "ems_items_v8";
+function isStandalone(){
+  return window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+}
+function isSampleOnly(){
+  if (items.length !== 7) return items.length === 0;
+  var ids = items.map(function(i){ return String(i.id); }).sort().join(',');
+  return ids === '1,2,3,4,5,6,7';
+}
+function kb(n){ return n > 1048576 ? (n/1048576).toFixed(1) + ' MB' : Math.round(n/1024) + ' KB'; }
+function backupText(){
+  return JSON.stringify({
+    app: "ems-stock-tracker", format: 1, key: STORE_KEY,
+    exportedAt: new Date().toISOString(),
+    source: isStandalone() ? "home-screen" : "safari",
+    count: items.length, items: items
+  });
+}
+function xMsg(t, ok){
+  var m = document.getElementById('xMsg');
+  m.style.color = ok === false ? '#b3121b' : '#15803d';
+  m.textContent = t;
+}
+function openMove(){
+  refreshMoveInfo(); xMsg('');
+  document.getElementById('moveModal').classList.add('on');
+}
+function refreshMoveInfo(){
+  var photos = items.filter(function(i){ return i.photo; }).length;
+  document.getElementById('xWhere').textContent = isStandalone()
+    ? 'You are in the Home Screen app. Use step 2 to restore.'
+    : 'You are in Safari. Use step 1 to save a backup.';
+  document.getElementById('xInfo').textContent = items.length + ' items (' + photos + ' with photos), about ' +
+    kb((localStorage.getItem(STORE_KEY) || '').length) + '. Photos are included.';
+}
+function closeMove(){
+  document.getElementById('moveModal').classList.remove('on');
+  document.getElementById('xFile').value = '';
+}
+function exportBackup(){
+  var txt = backupText();
+  var name = 'ems-stock-backup-' + new Date().toISOString().slice(0,10) + '-' + items.length + 'items.json';
+  var blob = new Blob([txt], { type: 'application/json' });
+  try {
+    var file = new File([blob], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'EMS Stock backup' })
+        .then(function(){ xMsg('Backup shared. Choose "Save to Files" if you have not already.'); })
+        .catch(function(e){ if (e && e.name !== 'AbortError') downloadBlob(blob, name); });
+      return;
+    }
+  } catch(e) {}
+  downloadBlob(blob, name);
+}
+function downloadBlob(blob, name){
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  xMsg('Backup saved as ' + name + ' (check the Downloads folder in Files).');
+}
+function copyBackup(){
+  var txt = backupText();
+  function fallback(){
+    var t = document.getElementById('xPaste');
+    t.value = txt; t.focus(); t.select();
+    try { document.execCommand('copy'); xMsg('Backup copied (' + kb(txt.length) + ').'); }
+    catch(e){ xMsg('Could not copy. Use "Save backup file" instead.', false); }
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt)
+      .then(function(){ xMsg('Backup copied (' + kb(txt.length) + '). Open the Home Screen app and paste it in step 2.'); })
+      .catch(fallback);
+  } else fallback();
+}
+function parseBackup(txt){
+  var data = JSON.parse(String(txt).replace(/^\uFEFF/, '').trim());
+  var list = Array.isArray(data) ? data : (data && Array.isArray(data.items) ? data.items : null);
+  if (!list) throw new Error('This file is not an EMS Stock backup.');
+  return list.filter(function(i){ return i && typeof i === 'object' && i.name; }).map(function(i, n){
+    return {
+      id: String(i.id != null && i.id !== '' ? i.id : 'item_import_' + Date.now() + '_' + n),
+      name: String(i.name), cat: i.cat || 'Other', loc: i.loc || 'Station 1',
+      qty: parseInt(i.qty) || 0, par: parseInt(i.par) || 0,
+      exp: i.exp || '', note: i.note || '', photo: i.photo || null
+    };
+  });
+}
+function applyImport(list){
+  if (!list.length) { xMsg('No items found in that backup.', false); return; }
+  var mode = (document.querySelector('input[name="xMode"]:checked') || {}).value || 'replace';
+  var next;
+  if (mode === 'replace') {
+    if (!confirm('Replace the ' + items.length + ' items on this device with ' + list.length + ' items from the backup?')) return;
+    next = list;
+  } else {
+    var byId = {}; next = items.slice();
+    next.forEach(function(it, i){ byId[String(it.id)] = i; });
+    var added = 0, updated = 0;
+    list.forEach(function(it){
+      if (byId[it.id] !== undefined) { next[byId[it.id]] = it; updated++; }
+      else { next.push(it); added++; }
+    });
+    if (!confirm('Merge backup: add ' + added + ' and update ' + updated + ' items?')) return;
+  }
+  var prev = localStorage.getItem(STORE_KEY);
+  try {
+    var json = JSON.stringify(next);
+    localStorage.setItem(STORE_KEY, json);
+    if (localStorage.getItem(STORE_KEY) !== json) throw new Error('verify');
+  } catch(e) {
+    try { if (prev !== null) localStorage.setItem(STORE_KEY, prev); } catch(_) {}
+    xMsg('Storage is full, so nothing was changed. Try deleting a few photos and restoring again.', false);
+    return;
+  }
+  items = next;
+  render(); updateBanner(); refreshMoveInfo();
+  xMsg('Restored. ' + items.length + ' items are now saved on this device.');
+}
+function importFile(inp){
+  var f = inp.files && inp.files[0];
+  if (!f) return;
+  var r = new FileReader();
+  r.onload = function(e){
+    try { applyImport(parseBackup(e.target.result)); }
+    catch(err){ xMsg('Could not read that file: ' + err.message, false); }
+    inp.value = '';
+  };
+  r.readAsText(f);
+}
+function importPaste(){
+  var t = document.getElementById('xPaste').value;
+  if (!t.trim()) { xMsg('Paste the backup text first.', false); return; }
+  try { applyImport(parseBackup(t)); }
+  catch(err){ xMsg('That text is not a complete backup: ' + err.message, false); }
+}
+function updateBanner(){
+  document.getElementById('moveBanner').style.display = (isStandalone() && isSampleOnly()) ? 'block' : 'none';
+}
+// Startup
+populateDropdowns();
+render();
+updateBanner();
+</script>
+</body>
+</html>
