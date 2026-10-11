@@ -66,7 +66,7 @@ input,select{padding:10px;border:1px solid #ccd;border-radius:8px;font-size:15px
 
 <header>
   <h1><span>🚑 EMS Stock Tracker</span><span class="badge">Station Units</span></h1>
-  <small>Station 1 · Station 2 · 2521 · 2522 · 2540 · Drug Box</small>
+  <small>Station 1 · Stockroom · 2521 · 2522 · 2540 · Drug Box</small>
 </header>
 
 <div class="stats">
@@ -153,8 +153,9 @@ input,select{padding:10px;border:1px solid #ccd;border-radius:8px;font-size:15px
   </div>
 </div>
 <script>
-var CATS = ["Airway", "Medications", "IV / Fluids", "Trauma / Bleeding", "Cardiac", "PPE", "Splinting", "Cleaning", "Linens", "Other"];
-var LOCS = ["Station 1", "Station 2", "Unit 2521", "Unit 2522", "Unit 2540", "Drug Box"];
+var CATS = ["Airway", "Medications", "IV / Fluids", "Trauma / Bleeding", "Cardiac", "PPE", "Splinting", "Vitals / Assessment", "Other"];
+var DEFAULT_LOC = "Stockroom";
+var LOCS = ["Station 1", "Stockroom", "Unit 2521", "Unit 2522", "Unit 2540", "Drug Box"];
 
 function d(n){ var x=new Date(); x.setDate(x.getDate()+n); return x.toISOString().slice(0,10); }
 
@@ -162,7 +163,7 @@ function getInitialSample(){
   return [
     {id:"1", name:"4x4 Gauze Pads", cat:"Trauma / Bleeding", loc:"Station 1", qty:40, par:50, exp:"", note:"Shelf B2"},
     {id:"2", name:"Tourniquet (CAT)", cat:"Trauma / Bleeding", loc:"Unit 2522", qty:2, par:2, exp:"", note:""},
-    {id:"3", name:"Normal Saline 1000mL", cat:"IV / Fluids", loc:"Station 2", qty:12, par:20, exp:d(20), note:"Lot 4471"},
+    {id:"3", name:"Normal Saline 1000mL", cat:"IV / Fluids", loc:"Stockroom", qty:12, par:20, exp:d(20), note:"Lot 4471"},
     {id:"4", name:"Nitrile Gloves (L)", cat:"PPE", loc:"Unit 2540", qty:0, par:10, exp:"", note:"Boxes"},
     {id:"5", name:"Epinephrine 1mg/10mL", cat:"Medications", loc:"Drug Box", qty:4, par:4, exp:d(12), note:""},
     {id:"6", name:"OPA Kit", cat:"Airway", loc:"Unit 2521", qty:1, par:1, exp:"", note:""},
@@ -178,6 +179,20 @@ try {
   items = getInitialSample();
 }
 
+// Move items from removed locations/categories to their replacements
+var LOC_RENAME = { "Station 2": "Stockroom" };
+var CAT_RENAME = { "Cleaning": "Other", "Linens": "Other" };
+function migrateItem(it){
+  var changed = false;
+  if (LOC_RENAME[it.loc]) { it.loc = LOC_RENAME[it.loc]; changed = true; }
+  if (CAT_RENAME[it.cat]) { it.cat = CAT_RENAME[it.cat]; changed = true; }
+  return changed;
+}
+(function(){
+  var changed = false;
+  for (var i = 0; i < items.length; i++) { if (migrateItem(items[i])) changed = true; }
+  if (changed) { try { localStorage.setItem("ems_items_v8", JSON.stringify(items)); } catch(e){} }
+})();
 var editId = null;
 var photo = null;
 
@@ -283,12 +298,12 @@ function openForm(id){
       if(String(items[i].id) === String(id)){ target = items[i]; break; }
     }
   }
-  var it = target || {name:'', cat:CATS[0], loc:LOCS[0], qty:1, par:5, exp:'', note:'', photo:null};
+  var it = target || {name:'', cat:CATS[0], loc:DEFAULT_LOC, qty:1, par:5, exp:'', note:'', photo:null};
   
   document.getElementById('fTitle').textContent = id ? 'Edit Item' : 'Add Item';
   document.getElementById('iName').value = it.name || '';
   document.getElementById('iCat').value = it.cat || CATS[0];
-  document.getElementById('iLoc').value = it.loc || LOCS[0];
+  document.getElementById('iLoc').value = it.loc || DEFAULT_LOC;
   document.getElementById('iQty').value = it.qty !== undefined ? it.qty : 1;
   document.getElementById('iPar').value = it.par !== undefined ? it.par : 5;
   document.getElementById('iExp').value = it.exp || '';
@@ -528,7 +543,7 @@ function parseCSV(txt){
   var ci = { name: col(['item','name']), cat: col(['category','cat']), loc: col(['location','loc']), qty: col(['qty','quantity']),
              par: col(['par','par level']), exp: col(['expiration','exp']), note: col(['notes','note','lot / notes']) };
   if (ci.name === -1) throw new Error('This CSV has no "Item" column.');
-  var LOC_MAP = { 'stockroom': 'Station 1' };
+  var LOC_MAP = { 'station 2': 'Stockroom', 'stock room': 'Stockroom', 'stockroom': 'Stockroom' };
   return rows.slice(1).map(function(r, n){
     function g(k){ return ci[k] === -1 ? '' : String(r[ci[k]] == null ? '' : r[ci[k]]).trim(); }
     var loc = g('loc'); loc = LOC_MAP[loc.toLowerCase()] || loc;
@@ -552,7 +567,7 @@ function normalizeItems(list){
       qty: parseInt(i.qty) || 0, par: parseInt(i.par) || 0,
       exp: i.exp || '', note: i.note || '', photo: i.photo || null
     };
-  });
+  }).map(function(it){ migrateItem(it); return it; });
 }
 function applyImport(list){
   if (!list.length) { xMsg('No items found in that backup.', false); return; }
@@ -607,6 +622,7 @@ function updateBanner(){
 }
 // Startup
 populateDropdowns();
+document.getElementById('fLoc').value = DEFAULT_LOC;
 render();
 updateBanner();
 </script>
