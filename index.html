@@ -138,7 +138,7 @@ input,select{padding:10px;border:1px solid #ccd;border-radius:8px;font-size:15px
     </div>
     <div class="xbox">
       <h3>2. Restore backup (do this in the Home Screen app)</h3>
-      <p>Pick the .json file you saved to Files, or paste copied backup text.</p>
+      <p>Pick the backup file (.json) or an Export CSV file (.csv) from Files, or paste copied backup text. CSV files don't include photos.</p>
       <div class="radio">
         <label><input type="radio" name="xMode" value="replace" checked> Replace all</label>
         <label><input type="radio" name="xMode" value="merge"> Merge</label>
@@ -506,10 +506,45 @@ function copyBackup(){
       .catch(fallback);
   } else fallback();
 }
+function parseCSV(txt){
+  var rows = [], row = [], cell = '', q = false;
+  for (var i = 0; i < txt.length; i++) {
+    var ch = txt[i];
+    if (q) {
+      if (ch === '"') { if (txt[i+1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && txt[i+1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  rows = rows.filter(function(r){ return r.some(function(c){ return String(c).trim() !== ''; }); });
+  if (rows.length < 2) throw new Error('The CSV file has no item rows.');
+  var head = rows[0].map(function(h){ return String(h).trim().toLowerCase(); });
+  function col(names){ for (var n = 0; n < names.length; n++) { var k = head.indexOf(names[n]); if (k !== -1) return k; } return -1; }
+  var ci = { name: col(['item','name']), cat: col(['category','cat']), loc: col(['location','loc']), qty: col(['qty','quantity']),
+             par: col(['par','par level']), exp: col(['expiration','exp']), note: col(['notes','note','lot / notes']) };
+  if (ci.name === -1) throw new Error('This CSV has no "Item" column.');
+  var LOC_MAP = { 'stockroom': 'Station 1' };
+  return rows.slice(1).map(function(r, n){
+    function g(k){ return ci[k] === -1 ? '' : String(r[ci[k]] == null ? '' : r[ci[k]]).trim(); }
+    var loc = g('loc'); loc = LOC_MAP[loc.toLowerCase()] || loc;
+    return { id: 'item_csv_' + Date.now() + '_' + n, name: g('name'), cat: g('cat'), loc: loc,
+             qty: g('qty'), par: g('par'), exp: g('exp'), note: g('note'), photo: null };
+  });
+}
 function parseBackup(txt){
-  var data = JSON.parse(String(txt).replace(/^\uFEFF/, '').trim());
+  txt = String(txt).replace(/^\uFEFF/, '');
+  if (!/^\s*[\[{]/.test(txt)) return normalizeItems(parseCSV(txt));
+  var data = JSON.parse(txt.trim());
   var list = Array.isArray(data) ? data : (data && Array.isArray(data.items) ? data.items : null);
   if (!list) throw new Error('This file is not an EMS Stock backup.');
+  return normalizeItems(list);
+}
+function normalizeItems(list){
   return list.filter(function(i){ return i && typeof i === 'object' && i.name; }).map(function(i, n){
     return {
       id: String(i.id != null && i.id !== '' ? i.id : 'item_import_' + Date.now() + '_' + n),
