@@ -49,6 +49,8 @@ input,select{padding:10px;border:1px solid #ccd;border-radius:8px;font-size:15px
 .save{background:#b3121b;color:#fff}.del{background:#fee2e2;color:#b3121b}.cancel{background:#e5e9f0;color:#334}
 .empty{text-align:center;color:#64748b;padding:48px 16px;font-size:15px}
 .tools button.move{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+.showing{margin:0 12px 10px;padding:10px 12px;border-radius:10px;background:#fff;border:2px solid #b3121b;display:none;align-items:center;justify-content:space-between;gap:8px;font-size:14px;font-weight:600}
+.showing button{padding:9px 12px;border:0;border-radius:8px;background:#b3121b;color:#fff;font-weight:700;font-size:14px;white-space:nowrap}
 .banner{margin:0 12px 12px;padding:12px;border-radius:10px;background:#dbeafe;color:#1e3a8a;font-size:14px;display:none}
 .banner b{display:block;margin-bottom:4px}.banner button{margin-top:8px;padding:9px 12px;border:0;border-radius:8px;background:#1d4ed8;color:#fff;font-weight:700;font-size:14px}
 .xbox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-top:12px}
@@ -97,6 +99,7 @@ input,select{padding:10px;border:1px solid #ccd;border-radius:8px;font-size:15px
   <button type="button" onclick="resetSample()">↺ Reset sample items</button>
 </div>
 
+<div class="showing" id="showing"><span id="showingText"></span><button type="button" onclick="showAll()">Show all</button></div>
 <div class="list" id="list"></div>
 <button type="button" class="fab" onclick="openForm()">+ Add Item</button>
 
@@ -245,6 +248,13 @@ function render(){
     return matchesQ && matchesL && matchesC && matchesS;
   });
 
+  var filteredOn = L !== 'all' || C !== 'all' || S !== 'all' || q;
+  var sh = document.getElementById('showing');
+  if (filteredOn && filtered.length < items.length) {
+    var where = L !== 'all' ? ' in ' + L : '';
+    document.getElementById('showingText').textContent = 'Showing ' + filtered.length + ' of ' + items.length + ' items' + where;
+    sh.style.display = 'flex';
+  } else sh.style.display = 'none';
   if (filtered.length === 0) {
     document.getElementById('list').innerHTML = '<div class="empty">No items found.<br>Tap <b>+ Add Item</b> below to add stock.</div>';
     return;
@@ -286,7 +296,18 @@ function adj(id, n){
 }
 
 function quick(s){
+  if (s === 'all') { showAll(); return; }
+  document.getElementById('fLoc').value = 'all';
+  document.getElementById('fCat').value = 'all';
+  document.getElementById('q').value = '';
   document.getElementById('fStat').value = s;
+  render();
+}
+function showAll(){
+  document.getElementById('fLoc').value = 'all';
+  document.getElementById('fCat').value = 'all';
+  document.getElementById('fStat').value = 'all';
+  document.getElementById('q').value = '';
   render();
 }
 
